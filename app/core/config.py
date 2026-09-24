@@ -7,6 +7,8 @@ from pydantic import Field
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.embeddings.models import validate_embedding_configuration
+
 
 class Settings(BaseSettings):
     """Application and PostgreSQL configuration."""
@@ -20,6 +22,14 @@ class Settings(BaseSettings):
     postgres_db: str = Field(default="enterprise_rag")
     postgres_user: str = Field(default="enterprise_rag")
     postgres_password: SecretStr = Field(...)
+    openai_api_key: SecretStr | None = Field(default=None)
+    embedding_model: str = Field(default="text-embedding-3-small")
+    embedding_dimension: int = Field(default=1536, gt=0)
+    embedding_batch_size: int = Field(default=100, gt=0)
+    embedding_max_retries: int = Field(default=2, ge=0)
+
+    def model_post_init(self, __context: object) -> None:
+        validate_embedding_configuration(self.embedding_model, self.embedding_dimension)
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -37,6 +47,11 @@ class Settings(BaseSettings):
             f"postgresql://{username}:{password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+
+    @property
+    def async_database_url(self) -> str:
+        """Build the async PostgreSQL URL without exposing credentials."""
+        return self.database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 
 @lru_cache
