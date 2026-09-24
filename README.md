@@ -94,6 +94,31 @@ python -m pytest tests/integration/test_database.py -q
 
 Vector similarity search, retrieval, reranking, and RAG generation are not implemented. They belong to Phase 5.
 
+## Phase 5: Vector Similarity Retrieval
+
+Phase 5 embeds a user query with the existing Phase 4 `EmbeddingService`, executes cosine similarity in PostgreSQL through pgvector, applies safe document/metadata filters, then applies the similarity threshold and database-side top-k limit.
+
+```text
+User Query -> Query Embedding -> pgvector Cosine Similarity
+		   -> Filters -> Threshold -> Top-K -> RetrievalResult[]
+```
+
+Retrieval configuration uses `RETRIEVAL_TOP_K` (default `5`) and `RETRIEVAL_SIMILARITY_THRESHOLD` (default `0.0`). Supported filters are `document_id`, `file_type`, and `source_type`. Similarity is returned as `1 - cosine_distance`, normalized to `0.0..1.0`, with deterministic `chunk_id` tie ordering. Empty or whitespace-only queries raise an error; valid queries with no matching chunks return `[]`.
+
+Example usage:
+
+```python
+from app.retrieval import RetrievalConfig, RetrievalFilter, RetrievalService
+
+results = await RetrievalService(
+	embedding_service,
+	vector_retrieval_repository,
+	RetrievalConfig(top_k=5, similarity_threshold=0.7),
+).retrieve(session, "What is the retention policy?", RetrievalFilter(file_type="pdf"))
+```
+
+Hybrid retrieval, BM25, reranking, vector indexes, LLM generation, and RAG answer generation are intentionally deferred to later phases.
+
 ## Architecture Placeholder
 
 ```text
@@ -133,6 +158,8 @@ Configuration is loaded from `.env` through Pydantic Settings. The available var
 - `EMBEDDING_DIMENSION`
 - `EMBEDDING_BATCH_SIZE`
 - `EMBEDDING_MAX_RETRIES`
+- `RETRIEVAL_TOP_K`
+- `RETRIEVAL_SIMILARITY_THRESHOLD`
 
 `.env` is ignored by Git and must never contain committed credentials.
 

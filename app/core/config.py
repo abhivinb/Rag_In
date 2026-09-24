@@ -8,6 +8,10 @@ from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.embeddings.models import validate_embedding_configuration
+from app.retrieval.models import (
+    RETRIEVAL_DEFAULT_SIMILARITY_THRESHOLD,
+    RETRIEVAL_DEFAULT_TOP_K,
+)
 
 
 class Settings(BaseSettings):
@@ -27,6 +31,10 @@ class Settings(BaseSettings):
     embedding_dimension: int = Field(default=1536, gt=0)
     embedding_batch_size: int = Field(default=100, gt=0)
     embedding_max_retries: int = Field(default=2, ge=0)
+    retrieval_top_k: int = Field(default=RETRIEVAL_DEFAULT_TOP_K, gt=0)
+    retrieval_similarity_threshold: float = Field(
+        default=RETRIEVAL_DEFAULT_SIMILARITY_THRESHOLD, ge=0.0, le=1.0
+    )
 
     def model_post_init(self, __context: object) -> None:
         validate_embedding_configuration(self.embedding_model, self.embedding_dimension)
