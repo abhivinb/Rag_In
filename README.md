@@ -134,6 +134,21 @@ Sources are derived directly from retrieved chunks and include document/chunk id
 
 The pipeline is non-streaming, stateless, and has no conversation memory, agents, query rewriting, or public API endpoint. Cross-Encoder reranking is intentionally deferred and is not implemented here.
 
+## Phase 9: Query Rewriting and Retrieval Relevance
+
+Phase 9 adds a bounded query-improvement and retrieval-sufficiency layer around Phase 6 and Phase 8:
+
+```text
+User Query -> Optional Query Rewrite -> Hybrid Retrieval
+		   -> Relevance Check -> Optional One Retry -> RAG Generation
+```
+
+Query rewriting is controlled by `QUERY_REWRITE_ENABLED` and reuses the existing LLM provider abstraction. Rewrite failures fall back to the original query. The relevance checker returns structured `relevant`, model-generated `confidence`, reason, and relevant chunk IDs. A result is accepted only when `relevant` is true and confidence is at least `RAG_RELEVANCE_THRESHOLD` (default `0.70`). Confidence is a model judgment, not a calibrated probability.
+
+The pipeline performs at most two retrieval attempts and never enters an unrestricted loop. Empty retrieval skips relevance checking. If both attempts are absent or insufficient, the service returns a deterministic safe no-answer with no sources and does not call answer generation. Sources come only from the final accepted result set.
+
+The relevance checker determines whether retrieved context is sufficient for answering; it does not rank or reorder individual chunks. Cross-Encoder reranking remains intentionally deferred. No agents, query-rewriting loops, conversation memory, streaming, or public API endpoint are included.
+
 ## Phase 6: Hybrid Retrieval
 
 Phase 6 provides a baseline hybrid retriever using pgvector semantic similarity plus PostgreSQL native full-text ranking. Vector retrieval is strong for semantic meaning, while keyword retrieval is useful for exact terms and identifiers.

@@ -41,6 +41,16 @@ class RAGService:
         results = await self.retrieval_service.hybrid_retrieve(
             session, request.query, filters
         )
+        return await self.answer_from_results(request, results)
+
+    async def answer_from_results(
+        self,
+        request: RAGRequest,
+        results: list[HybridRetrievalResult],
+    ) -> RAGResponse:
+        """Generate from an already accepted retrieval result set."""
+        if not request.query.strip():
+            raise InvalidQueryError("Retrieval query must not be empty.")
         if not results:
             return RAGResponse(answer=NO_CONTEXT_ANSWER, sources=[])
         context, context_results = self.context_builder.build_with_sources(results)
