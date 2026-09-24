@@ -27,6 +27,37 @@ print(document.document_id)
 print(document.text)
 ```
 
+## Phase 3: Document Chunking
+
+Phase 3 converts a normalized `Document` into ordered `DocumentChunk` objects. Chunking is independent from embeddings, databases, and retrieval.
+
+```text
+Document -> Validate Configuration -> Recursive Chunking
+		 -> Propagate Metadata -> Validate Chunks -> DocumentChunk[]
+```
+
+`ChunkingConfig` supports:
+
+- `chunk_size`: maximum chunk content length; default `1000`
+- `chunk_overlap`: characters repeated between adjacent chunks; default `150`
+- `minimum_chunk_size`: preferred minimum boundary size; default `50`
+
+Configuration requires `chunk_size > 0`, `0 <= chunk_overlap < chunk_size`, and `0 <= minimum_chunk_size <= chunk_size`. The recursive strategy prefers paragraph, line, sentence, and whitespace boundaries before using a hard character split. Empty documents return no chunks.
+
+Chunks preserve document identity, source metadata, page-number lists, and character offsets. Chunk IDs are deterministic hashes of `document_id`, `chunk_index`, and content.
+
+Example usage:
+
+```python
+from app.ingestion.chunking import ChunkingConfig, ChunkingService
+
+chunks = ChunkingService(
+	config=ChunkingConfig(chunk_size=800, chunk_overlap=100, minimum_chunk_size=40)
+).chunk(document)
+```
+
+Phase 3 ends at `Document -> DocumentChunk[]`; embeddings and vector storage are future phases.
+
 ## Architecture Placeholder
 
 ```text
