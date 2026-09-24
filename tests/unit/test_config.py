@@ -16,6 +16,10 @@ def test_settings_load_from_env_file(monkeypatch, tmp_path) -> None:
         "HYBRID_VECTOR_WEIGHT",
         "HYBRID_KEYWORD_WEIGHT",
         "HYBRID_CANDIDATE_MULTIPLIER",
+        "LLM_PROVIDER",
+        "LLM_MODEL",
+        "LLM_TEMPERATURE",
+        "RAG_MAX_CONTEXT_CHARS",
     ):
         monkeypatch.delenv(variable, raising=False)
 

@@ -119,6 +119,21 @@ results = await RetrievalService(
 
 Hybrid retrieval, BM25, reranking, vector indexes, LLM generation, and RAG answer generation are intentionally deferred to later phases.
 
+## Phase 8: Core RAG Generation
+
+Phase 8 builds the stateless grounded answering pipeline on top of Phase 6 hybrid retrieval:
+
+```text
+User Query -> Hybrid Retrieval -> Bounded Context -> Grounded Prompts
+		   -> LLM Provider -> Answer + Source References
+```
+
+The default provider is OpenAI Chat Completions through the existing `openai` dependency. Configure `LLM_PROVIDER`, `LLM_MODEL`, `LLM_TEMPERATURE`, and `RAG_MAX_CONTEXT_CHARS`. Retrieved chunks are treated as untrusted data, and the system prompt requires answers to be supported by the supplied context. When retrieval returns no results, the LLM is not called and a deterministic no-context response is returned.
+
+Sources are derived directly from retrieved chunks and include document/chunk identifiers, metadata, chunk ordering, and retrieval score. Context construction includes complete chunks until the configured character limit; one oversized first chunk is bounded with an explicit truncation marker.
+
+The pipeline is non-streaming, stateless, and has no conversation memory, agents, query rewriting, or public API endpoint. Cross-Encoder reranking is intentionally deferred and is not implemented here.
+
 ## Phase 6: Hybrid Retrieval
 
 Phase 6 provides a baseline hybrid retriever using pgvector semantic similarity plus PostgreSQL native full-text ranking. Vector retrieval is strong for semantic meaning, while keyword retrieval is useful for exact terms and identifiers.
