@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database.models import ChunkRecord
 from app.retrieval.exceptions import RetrievalDatabaseError
 from app.retrieval.filters import apply_retrieval_filters
+from app.retrieval.keyword import keyword_match_expression, keyword_score_expression
 from app.retrieval.models import RetrievalConfig, RetrievalFilter
 
 
@@ -74,3 +75,40 @@ class VectorRetrievalRepository:
             ]
         except Exception as error:
             raise RetrievalDatabaseError("Vector retrieval query failed.") from error
+
+    async def keyword_search(
+        self,
+        session: AsyncSession,
+        query: str,
+        candidate_limit: int,
+        filters: RetrievalFilter | None = None,
+    ) -> list[RetrievalRow]:
+        """Return PostgreSQL native full-text matches ordered by ts_rank_cd."""
+        keyword_score = keyword_score_expression(query).label("keyword_score")
+        statement: Select = select(
+            ChunkRecord.chunk_id,
+            ChunkRecord.document_id,
+            ChunkRecord.content,
+            ChunkRecord.chunk_metadata,
+            ChunkRecord.chunk_index,
+            keyword_score,
+        ).where(
+            keyword_match_expression(query),
+        )
+        statement = apply_retrieval_filters(statement, filters)
+        statement = statement.order_by(desc(keyword_score), ChunkRecord.chunk_id).limit(candidate_limit)
+        try:
+            result = await session.execute(statement)
+            return [
+                RetrievalRow(
+                    chunk_id=row.chunk_id,
+                    document_id=row.document_id,
+                    content=row.content,
+                    score=float(row.keyword_score),
+                    metadata=row.chunk_metadata,
+                    chunk_index=row.chunk_index,
+                )
+                for row in result
+            ]
+        except Exception as error:
+            raise RetrievalDatabaseError("Keyword retrieval query failed.") from error

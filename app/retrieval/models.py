@@ -6,6 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 RETRIEVAL_DEFAULT_TOP_K = 5
 RETRIEVAL_DEFAULT_SIMILARITY_THRESHOLD = 0.0
+HYBRID_DEFAULT_VECTOR_WEIGHT = 0.7
+HYBRID_DEFAULT_KEYWORD_WEIGHT = 0.3
+HYBRID_DEFAULT_CANDIDATE_MULTIPLIER = 3
 
 
 class RetrievalConfig(BaseModel):
@@ -38,6 +41,37 @@ class RetrievalResult(BaseModel):
     document_id: str
     content: str
     score: float = Field(ge=0.0, le=1.0)
+    metadata: dict[str, Any]
+    chunk_index: int = Field(ge=0)
+
+
+class HybridConfig(BaseModel):
+    """Configuration for vector and PostgreSQL keyword score fusion."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    vector_weight: float = Field(default=HYBRID_DEFAULT_VECTOR_WEIGHT, ge=0.0)
+    keyword_weight: float = Field(default=HYBRID_DEFAULT_KEYWORD_WEIGHT, ge=0.0)
+    candidate_multiplier: int = Field(default=HYBRID_DEFAULT_CANDIDATE_MULTIPLIER, ge=1)
+
+    def validate_weights(self) -> None:
+        if abs((self.vector_weight + self.keyword_weight) - 1.0) > 1e-9:
+            raise ValueError("vector_weight and keyword_weight must sum to 1.0.")
+
+
+class HybridRetrievalResult(BaseModel):
+    """Ranked result containing both source scores and the fused score."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    chunk_id: str
+    document_id: str
+    content: str
+    hybrid_score: float = Field(ge=0.0, le=1.0)
+    vector_score: float = Field(ge=0.0, le=1.0)
+    keyword_score: float = Field(ge=0.0)
+    normalized_vector_score: float = Field(ge=0.0, le=1.0)
+    normalized_keyword_score: float = Field(ge=0.0, le=1.0)
     metadata: dict[str, Any]
     chunk_index: int = Field(ge=0)
 

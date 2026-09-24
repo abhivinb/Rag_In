@@ -13,6 +13,9 @@ def test_settings_load_from_env_file(monkeypatch, tmp_path) -> None:
         "POSTGRES_PASSWORD",
         "RETRIEVAL_TOP_K",
         "RETRIEVAL_SIMILARITY_THRESHOLD",
+        "HYBRID_VECTOR_WEIGHT",
+        "HYBRID_KEYWORD_WEIGHT",
+        "HYBRID_CANDIDATE_MULTIPLIER",
     ):
         monkeypatch.delenv(variable, raising=False)
 

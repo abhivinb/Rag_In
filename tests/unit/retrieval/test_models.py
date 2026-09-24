@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.retrieval.models import RetrievalConfig, RetrievalFilter, RetrievalResult
+from app.retrieval.models import HybridConfig, RetrievalConfig, RetrievalFilter, RetrievalResult
 
 
 def test_retrieval_models_accept_valid_values() -> None:
@@ -21,6 +21,7 @@ def test_retrieval_models_accept_valid_values() -> None:
     assert config.top_k == 3
     assert filters.file_type == "pdf"
     assert result.score == 0.9
+    assert HybridConfig().vector_weight == 0.7
 
 
 @pytest.mark.parametrize(
@@ -30,3 +31,12 @@ def test_retrieval_models_accept_valid_values() -> None:
 def test_invalid_retrieval_configuration_is_rejected(kwargs: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
         RetrievalConfig(**kwargs)
+
+
+def test_invalid_hybrid_weights_and_multiplier_are_rejected() -> None:
+    with pytest.raises(ValidationError):
+        HybridConfig(vector_weight=-0.1)
+    with pytest.raises(ValidationError):
+        HybridConfig(candidate_multiplier=0)
+    with pytest.raises(ValueError):
+        HybridConfig(vector_weight=0.6, keyword_weight=0.3).validate_weights()

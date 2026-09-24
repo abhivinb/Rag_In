@@ -9,6 +9,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.embeddings.models import validate_embedding_configuration
 from app.retrieval.models import (
+    HYBRID_DEFAULT_CANDIDATE_MULTIPLIER,
+    HYBRID_DEFAULT_KEYWORD_WEIGHT,
+    HYBRID_DEFAULT_VECTOR_WEIGHT,
     RETRIEVAL_DEFAULT_SIMILARITY_THRESHOLD,
     RETRIEVAL_DEFAULT_TOP_K,
 )
@@ -35,9 +38,16 @@ class Settings(BaseSettings):
     retrieval_similarity_threshold: float = Field(
         default=RETRIEVAL_DEFAULT_SIMILARITY_THRESHOLD, ge=0.0, le=1.0
     )
+    hybrid_vector_weight: float = Field(default=HYBRID_DEFAULT_VECTOR_WEIGHT, ge=0.0)
+    hybrid_keyword_weight: float = Field(default=HYBRID_DEFAULT_KEYWORD_WEIGHT, ge=0.0)
+    hybrid_candidate_multiplier: int = Field(
+        default=HYBRID_DEFAULT_CANDIDATE_MULTIPLIER, ge=1
+    )
 
     def model_post_init(self, __context: object) -> None:
         validate_embedding_configuration(self.embedding_model, self.embedding_dimension)
+        if abs((self.hybrid_vector_weight + self.hybrid_keyword_weight) - 1.0) > 1e-9:
+            raise ValueError("Hybrid retrieval weights must sum to 1.0.")
 
     model_config = SettingsConfigDict(
         env_file=".env",
