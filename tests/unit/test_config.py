@@ -20,6 +20,9 @@ def test_settings_load_from_env_file(monkeypatch, tmp_path) -> None:
         "LLM_MODEL",
         "LLM_TEMPERATURE",
         "RAG_MAX_CONTEXT_CHARS",
+        "QUERY_REWRITE_ENABLED",
+        "QUERY_REWRITE_MODEL",
+        "RAG_RELEVANCE_THRESHOLD",
     ):
         monkeypatch.delenv(variable, raising=False)
 

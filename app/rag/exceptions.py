@@ -19,3 +19,7 @@ class PromptConstructionError(RAGError):
 
 class EmptyLLMAnswerError(LLMProviderError):
     """Raised when the provider returns no usable answer."""
+
+
+class RelevanceCheckError(RAGError):
+    """Raised when relevance checking cannot produce a valid judgment."""

@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     llm_model: str = Field(default="gpt-4o-mini")
     llm_temperature: float = Field(default=0.0, ge=0.0, le=2.0)
     rag_max_context_chars: int = Field(default=20_000, gt=0)
+    query_rewrite_enabled: bool = True
+    query_rewrite_model: str = Field(default="gpt-4o-mini")
+    rag_relevance_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
 
     def model_post_init(self, __context: object) -> None:
         validate_embedding_configuration(self.embedding_model, self.embedding_dimension)
