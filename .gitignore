@@ -1,3 +1,5 @@
+.pytest_cache/
+evaluation/results/
 .__pycache__/
 *.py[cod]
 .pytest_cache/

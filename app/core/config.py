@@ -50,6 +50,12 @@ class Settings(BaseSettings):
     query_rewrite_enabled: bool = True
     query_rewrite_model: str = Field(default="gpt-4o-mini")
     rag_relevance_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
+    eval_llm_model: str = Field(default="gpt-4o-mini")
+    eval_faithfulness_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
+    eval_answer_relevancy_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
+    eval_context_relevancy_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
+    eval_context_precision_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
+    eval_context_recall_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
 
     def model_post_init(self, __context: object) -> None:
         validate_embedding_configuration(self.embedding_model, self.embedding_dimension)

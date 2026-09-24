@@ -134,6 +134,26 @@ Sources are derived directly from retrieved chunks and include document/chunk id
 
 The pipeline is non-streaming, stateless, and has no conversation memory, agents, query rewriting, or public API endpoint. Cross-Encoder reranking is intentionally deferred and is not implemented here.
 
+## Phase 10: Offline RAG Evaluation
+
+Phase 10 is an offline engineering workflow for measuring the current Phase 9 → Phase 6 → Phase 8 pipeline against explicit, reviewable JSON evaluation samples.
+
+```text
+Evaluation Dataset -> RAG Pipeline -> Actual Answer + Retrieved Context
+				   -> DeepEval Metrics -> Evaluation Report
+```
+
+The dataset format contains `id`, `question`, `expected_answer`, and `expected_contexts`. Runtime retrieved contexts remain separate from expected ground-truth contexts. The supported DeepEval metrics are Faithfulness, Answer Relevancy, Contextual Relevancy, Contextual Precision, and Contextual Recall. Thresholds and the evaluation judge model are configured with `EVAL_*` settings.
+
+Normal tests use fake RAG and metric components and make no network calls. An optional real evaluation run is available only after wiring a configured RAG application into `evaluation/run_evaluation.py`:
+
+```powershell
+$env:RUN_REAL_EVAL = "1"
+python evaluation/run_evaluation.py
+```
+
+Evaluation scores are model- and dataset-dependent measurements, not absolute truth. Reports can be written to `evaluation/results/latest.json` by callers and that directory is ignored by Git. Evaluation is not part of the production request path, does not gate startup or CI, and does not implement reranking, agents, LangGraph, or monitoring.
+
 ## Phase 9: Query Rewriting and Retrieval Relevance
 
 Phase 9 adds a bounded query-improvement and retrieval-sufficiency layer around Phase 6 and Phase 8:

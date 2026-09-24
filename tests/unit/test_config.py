@@ -23,6 +23,12 @@ def test_settings_load_from_env_file(monkeypatch, tmp_path) -> None:
         "QUERY_REWRITE_ENABLED",
         "QUERY_REWRITE_MODEL",
         "RAG_RELEVANCE_THRESHOLD",
+        "EVAL_LLM_MODEL",
+        "EVAL_FAITHFULNESS_THRESHOLD",
+        "EVAL_ANSWER_RELEVANCY_THRESHOLD",
+        "EVAL_CONTEXT_RELEVANCY_THRESHOLD",
+        "EVAL_CONTEXT_PRECISION_THRESHOLD",
+        "EVAL_CONTEXT_RECALL_THRESHOLD",
     ):
         monkeypatch.delenv(variable, raising=False)
 
