@@ -1,0 +1,11 @@
+[
+  {
+    "id": "adas-001",
+    "question": "What does Lane Keeping Assist do?",
+    "expected_answer": "Lane Keeping Assist provides steering assistance to help maintain the vehicle's lane position.",
+    "expected_contexts": [
+      "Lane Keeping Assist provides steering assistance to help maintain lane position."
+    ],
+    "metadata": {"domain": "adas"}
+  }
+]

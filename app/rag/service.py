@@ -66,6 +66,7 @@ class RAGService:
         return RAGResponse(
             answer=answer.strip(),
             sources=[_source_reference(result) for result in context_results],
+            retrieved_context=[result.content for result in context_results],
         )
 
 

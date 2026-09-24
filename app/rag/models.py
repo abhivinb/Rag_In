@@ -32,3 +32,4 @@ class RAGResponse(BaseModel):
 
     answer: str = Field(min_length=1)
     sources: list[SourceReference]
+    retrieved_context: list[str] = Field(default_factory=list)
