@@ -5,6 +5,7 @@ from app.core.config import Settings
 
 def test_settings_load_from_env_file(monkeypatch, tmp_path) -> None:
     for variable in (
+        "APP_ENV",
         "POSTGRES_HOST",
         "POSTGRES_PORT",
         "POSTGRES_DB",
