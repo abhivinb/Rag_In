@@ -13,6 +13,10 @@ class RetrievalConfigurationError(RetrievalError):
     """Raised when retrieval configuration is invalid."""
 
 
+class HybridConfigurationError(RetrievalConfigurationError):
+    """Raised when hybrid retrieval configuration is invalid."""
+
+
 class QueryEmbeddingError(RetrievalError):
     """Raised when the query cannot be embedded."""
 

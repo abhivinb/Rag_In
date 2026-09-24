@@ -119,6 +119,22 @@ results = await RetrievalService(
 
 Hybrid retrieval, BM25, reranking, vector indexes, LLM generation, and RAG answer generation are intentionally deferred to later phases.
 
+## Phase 6: Hybrid Retrieval
+
+Phase 6 provides a baseline hybrid retriever using pgvector semantic similarity plus PostgreSQL native full-text ranking. Vector retrieval is strong for semantic meaning, while keyword retrieval is useful for exact terms and identifiers.
+
+```text
+User Query -> Vector Retrieval
+		   -> PostgreSQL Full-Text Retrieval
+		   -> Score Normalization -> Weighted Fusion -> Filters -> Top-K
+```
+
+Keyword retrieval uses `to_tsvector('english', content)`, `plainto_tsquery('english', query)`, and PostgreSQL `ts_rank_cd`. This is PostgreSQL native full-text ranking, not a separate BM25 engine. Each score source is min-max normalized over its candidate set, then combined with `HYBRID_VECTOR_WEIGHT` and `HYBRID_KEYWORD_WEIGHT`. `HYBRID_CANDIDATE_MULTIPLIER` controls how many candidates each source contributes before final top-k selection.
+
+The vector similarity threshold remains a vector-candidate filter and is never applied to the final hybrid score. Supported filters remain `document_id`, `file_type`, and `source_type`. Matching candidates are merged by `chunk_id`, ties are ordered deterministically, and no-result queries return an empty list.
+
+Phase 6 adds a functional PostgreSQL GIN index through Alembic migration `0002_add_chunk_content_fts_index`. No vector index is introduced yet. Reranking, hybrid extensions, BM25-specific engines, LLM generation, and RAG answer generation remain out of scope.
+
 ## Architecture Placeholder
 
 ```text

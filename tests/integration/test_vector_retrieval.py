@@ -78,7 +78,14 @@ async def seed_records(session) -> None:
                 "chunk_id": f"{PREFIX}-{chunk_id}",
                 "document_id": document_id,
                 "chunk_index": chunk_index,
-                "content": chunk_id,
+                "content": {
+                    "a-high": "alpha semantic result",
+                    "a-mid": "alpha policy result",
+                    "a-low": "unrelated content",
+                    "b-mid": "beta policy result",
+                    "tie-a": "alpha tie result",
+                    "tie-b": "alpha tie result",
+                }[chunk_id],
                 "metadata": {"file_type": file_type, "source_type": source_type},
                 "embedding": embedding,
                 "created_at": now,
@@ -164,3 +171,47 @@ async def test_pgvector_retrieval_filters_ranking_threshold_and_top_k() -> None:
 
 def test_embedding_column_is_non_null_by_schema_contract() -> None:
     assert ChunkRecord.__table__.c.embedding.nullable is False
+
+
+@pytest.mark.asyncio
+async def test_hybrid_retrieval_uses_keyword_candidates_and_fuses_scores() -> None:
+    engine = create_engine(Settings())
+    session_factory = create_session_factory(engine)
+    repository = VectorRetrievalRepository()
+    embedding_service = EmbeddingService(QueryProvider(), EmbeddingConfig())
+    service = RetrievalService(
+        embedding_service,
+        repository,
+        RetrievalConfig(top_k=5, similarity_threshold=0.99),
+    )
+
+    try:
+        async with session_factory() as session:
+            await seed_records(session)
+        async with session_factory() as session:
+            keyword_rows = await repository.keyword_search(session, "policy", 15)
+            assert [row.chunk_id for row in keyword_rows] == [
+                f"{PREFIX}-a-mid",
+                f"{PREFIX}-b-mid",
+            ]
+
+            results = await service.hybrid_retrieve(session, "policy")
+            assert results
+            assert {result.chunk_id for result in results} >= {
+                f"{PREFIX}-a-high",
+                f"{PREFIX}-a-mid",
+                f"{PREFIX}-b-mid",
+            }
+            assert len(results) == len({result.chunk_id for result in results})
+            assert all(0.0 <= result.hybrid_score <= 1.0 for result in results)
+            assert all(result.keyword_score >= 0.0 for result in results)
+    finally:
+        async with session_factory() as session:
+            await session.execute(
+                delete(ChunkRecord).where(ChunkRecord.chunk_id.like(f"{PREFIX}-%"))
+            )
+            await session.execute(
+                delete(DocumentRecord).where(DocumentRecord.document_id.like(f"{PREFIX}-%"))
+            )
+            await session.commit()
+        await engine.dispose()

@@ -16,12 +16,20 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def include_object(object_, name, type_, reflected, compare_to):
+    """Keep the functional FTS index owned by its explicit migration."""
+    if type_ == "index" and name == "ix_document_chunks_content_fts":
+        return False
+    return True
+
+
 def run_migrations_offline() -> None:
     """Run migrations without creating a database connection."""
     settings = get_settings()
     context.configure(
         url=settings.async_database_url,
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -31,7 +39,11 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection) -> None:
     """Configure Alembic against an active async connection."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        include_object=include_object,
+    )
     with context.begin_transaction():
         context.run_migrations()
 

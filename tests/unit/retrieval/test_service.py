@@ -8,7 +8,7 @@ from app.embeddings.base import EmbeddingProvider
 from app.embeddings.models import EmbeddingConfig
 from app.embeddings.service import EmbeddingService
 from app.retrieval.exceptions import InvalidQueryError, QueryEmbeddingError, RetrievalConfigurationError
-from app.retrieval.models import RetrievalConfig, RetrievalFilter
+from app.retrieval.models import HybridConfig, RetrievalConfig, RetrievalFilter
 from app.retrieval.repository import RetrievalRow
 from app.retrieval.service import RetrievalService
 
@@ -26,21 +26,31 @@ class FakeProvider(EmbeddingProvider):
 
 
 class FakeRepository:
-    def __init__(self, rows: Sequence[RetrievalRow] = ()) -> None:
+    def __init__(
+        self,
+        rows: Sequence[RetrievalRow] = (),
+        keyword_rows: Sequence[RetrievalRow] | None = None,
+    ) -> None:
         self.rows = list(rows)
+        self.keyword_rows = list(keyword_rows if keyword_rows is not None else rows)
         self.query_vectors: list[list[float]] = []
         self.filters: list[RetrievalFilter | None] = []
+        self.keyword_calls: list[tuple[str, int]] = []
 
     async def search(self, session, query_vector, config, filters=None):
         self.query_vectors.append(list(query_vector))
         self.filters.append(filters)
         return self.rows[: config.top_k]
 
+    async def keyword_search(self, session, query, candidate_limit, filters=None):
+        self.keyword_calls.append((query, candidate_limit))
+        return self.keyword_rows[:candidate_limit]
 
-def make_service(*, rows=(), fail=False, config=None):
+
+def make_service(*, rows=(), keyword_rows=None, fail=False, config=None):
     provider = FakeProvider(fail=fail)
     embedding = EmbeddingService(provider, EmbeddingConfig())
-    repository = FakeRepository(rows)
+    repository = FakeRepository(rows, keyword_rows)
     service = RetrievalService(embedding, repository, config or RetrievalConfig())
     return service, repository, provider
 
@@ -84,6 +94,42 @@ async def test_query_embedding_failure_is_wrapped() -> None:
 
     with pytest.raises(QueryEmbeddingError):
         await service.retrieve(None, "query")
+
+
+@pytest.mark.asyncio
+async def test_hybrid_service_fuses_candidates_and_applies_candidate_multiplier() -> None:
+    rows = [make_row(0.8)]
+    keyword_rows = [RetrievalRow(
+        chunk_id="chunk-2",
+        document_id="doc-2",
+        content="keyword",
+        score=2.0,
+        metadata={},
+        chunk_index=1,
+    )]
+    service, repository, _ = make_service(
+        rows=rows,
+        keyword_rows=keyword_rows,
+        config=RetrievalConfig(top_k=1, similarity_threshold=0.7),
+    )
+
+    results = await service.hybrid_retrieve(
+        None,
+        "query",
+        RetrievalFilter(file_type="pdf"),
+        HybridConfig(candidate_multiplier=3),
+    )
+
+    assert len(results) == 1
+    assert repository.keyword_calls == [("query", 3)]
+    assert repository.filters[-1].file_type == "pdf"
+
+
+@pytest.mark.asyncio
+async def test_hybrid_no_candidates_returns_empty() -> None:
+    service, _, _ = make_service()
+
+    assert await service.hybrid_retrieve(None, "query") == []
 
 
 def test_service_rejects_invalid_configuration() -> None:
