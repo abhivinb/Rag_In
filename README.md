@@ -4,7 +4,28 @@
 
 Phase 1 establishes the production-oriented foundation for an enterprise knowledge assistant: a FastAPI application, typed environment configuration, centralized logging, PostgreSQL/pgvector infrastructure, Docker support, and automated tests.
 
-RAG behavior is intentionally out of scope for this phase. Ingestion, retrieval, generation, agents, embeddings, evaluation, and deployment integrations will be added in later phases.
+RAG behavior is intentionally out of scope for this phase. Retrieval, generation, agents, embeddings, evaluation, and deployment integrations will be added in later phases.
+
+## Phase 2: Document Ingestion
+
+Phase 2 adds a format-independent ingestion service for PDF, DOCX, and UTF-8 TXT files. It validates the source, extracts text, applies conservative whitespace cleanup, generates stable metadata, and returns a normalized Pydantic `Document` ready for Phase 3 chunking.
+
+```text
+File -> Validation -> Type Detection -> Loader -> Text Extraction
+	-> Text Cleaning -> Metadata -> Normalized Document
+```
+
+Supported formats are `.pdf`, `.docx`, and `.txt`. The ingestion layer does not implement chunking, embeddings, vector search, database persistence, LLM calls, or RAG generation.
+
+Example usage:
+
+```python
+from app.ingestion.service import IngestionService
+
+document = IngestionService().ingest("data/raw/txt/example.txt")
+print(document.document_id)
+print(document.text)
+```
 
 ## Architecture Placeholder
 
@@ -79,6 +100,8 @@ Check the health endpoint at <http://127.0.0.1:8000/health>.
 ```powershell
 python -m pytest
 ```
+
+The test suite uses temporary files and does not require PostgreSQL or developer-machine documents.
 
 ## Docker Commands
 
