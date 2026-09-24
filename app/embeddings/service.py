@@ -54,3 +54,20 @@ class EmbeddingService:
                     )
                 results.append(EmbeddingResult(chunk_id=chunk.chunk_id, vector=list(vector)))
         return results
+
+    async def embed_query(self, query: str) -> list[float]:
+        """Embed one retrieval query using the same provider contract."""
+        if not query.strip():
+            raise EmbeddingInputError("Embedding query must not be empty.")
+        try:
+            vector = await self.provider.embed_text(query)
+        except EmbeddingProviderError:
+            raise
+        except Exception as error:
+            raise EmbeddingProviderError("The embedding provider request failed.") from error
+        if len(vector) != self.config.dimension:
+            raise EmbeddingDimensionError(
+                f"Expected embedding dimension {self.config.dimension}, "
+                f"received {len(vector)}."
+            )
+        return list(vector)

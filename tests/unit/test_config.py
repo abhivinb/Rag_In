@@ -11,6 +11,8 @@ def test_settings_load_from_env_file(monkeypatch, tmp_path) -> None:
         "POSTGRES_DB",
         "POSTGRES_USER",
         "POSTGRES_PASSWORD",
+        "RETRIEVAL_TOP_K",
+        "RETRIEVAL_SIMILARITY_THRESHOLD",
     ):
         monkeypatch.delenv(variable, raising=False)
 
