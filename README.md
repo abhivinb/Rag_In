@@ -4,7 +4,7 @@
 
 Phase 1 establishes the production-oriented foundation for an enterprise knowledge assistant: a FastAPI application, typed environment configuration, centralized logging, PostgreSQL/pgvector infrastructure, Docker support, and automated tests.
 
-RAG behavior is intentionally out of scope for this phase. Retrieval, generation, agents, embeddings, evaluation, and deployment integrations will be added in later phases.
+RAG behavior is intentionally out of scope for this phase. Retrieval, generation, agents, evaluation, and deployment integrations will be added in later phases.
 
 ## Phase 2: Document Ingestion
 
@@ -58,6 +58,42 @@ chunks = ChunkingService(
 
 Phase 3 ends at `Document -> DocumentChunk[]`; embeddings and vector storage are future phases.
 
+## Phase 4: Embeddings and Vector Store
+
+Phase 4 generates embeddings for `DocumentChunk` objects and persists documents, chunks, metadata, and vectors in PostgreSQL with pgvector. Embedding generation and persistence are separate abstractions so the provider can be replaced without rewriting the repository.
+
+```text
+DocumentChunk[] -> EmbeddingService -> EmbeddingProvider
+				-> EmbeddingResult[] -> VectorRepository
+				-> PostgreSQL + pgvector
+```
+
+The default provider is the official OpenAI SDK, configured with `OPENAI_API_KEY`, `EMBEDDING_MODEL`, `EMBEDDING_DIMENSION`, `EMBEDDING_BATCH_SIZE`, and `EMBEDDING_MAX_RETRIES`. The provider does not log keys, document content, or vectors. Returned dimensions are validated before persistence; the database schema uses `Vector(1536)` and startup rejects a mismatched configured dimension.
+
+The schema contains `documents` and `document_chunks`. Core fields remain relational, flexible metadata is JSONB, chunks reference documents with a foreign key, and stable document/chunk IDs make upserts idempotent. No vector similarity index is created yet.
+
+Apply the initial Alembic migration after PostgreSQL is running:
+
+```powershell
+docker compose up -d postgres
+alembic upgrade head
+```
+
+Run unit tests with:
+
+```powershell
+python -m pytest -q
+```
+
+Run PostgreSQL/pgvector integration tests explicitly against the local Compose service:
+
+```powershell
+$env:RUN_DB_INTEGRATION = "1"
+python -m pytest tests/integration/test_database.py -q
+```
+
+Vector similarity search, retrieval, reranking, and RAG generation are not implemented. They belong to Phase 5.
+
 ## Architecture Placeholder
 
 ```text
@@ -92,6 +128,11 @@ Configuration is loaded from `.env` through Pydantic Settings. The available var
 - `POSTGRES_DB`
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
+- `OPENAI_API_KEY`
+- `EMBEDDING_MODEL`
+- `EMBEDDING_DIMENSION`
+- `EMBEDDING_BATCH_SIZE`
+- `EMBEDDING_MAX_RETRIES`
 
 `.env` is ignored by Git and must never contain committed credentials.
 
