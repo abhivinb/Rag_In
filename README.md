@@ -154,6 +154,30 @@ python evaluation/run_evaluation.py
 
 Evaluation scores are model- and dataset-dependent measurements, not absolute truth. Reports can be written to `evaluation/results/latest.json` by callers and that directory is ignored by Git. Evaluation is not part of the production request path, does not gate startup or CI, and does not implement reranking, agents, LangGraph, or monitoring.
 
+## Phase 11: RAG Observability
+
+Optional LangSmith tracing records the Phase 9 RAG root operation and stage summaries for query rewriting, hybrid retrieval, relevance checks, and answer generation. It is disabled by default. Tracing activates only when both `OBSERVABILITY_ENABLED=true` and `LANGSMITH_TRACING=true` are set with a non-empty `LANGSMITH_API_KEY`; missing configuration or LangSmith failures do not block RAG requests.
+
+```dotenv
+OBSERVABILITY_ENABLED=true
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=your-local-secret
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+LANGSMITH_PROJECT=enterprise-rag
+```
+
+Stage traces include queries, rewrite/fallback status, safe filters, result counts, attempt/relevance summaries, model name, context size/count, answer, source count, and latency. Instrumentation does not attach database credentials, API keys, complete document contexts, or full prompts as metadata. Query text and final answers are captured for debugging; do not enable external tracing for sensitive workloads unless policy permits it. Enabled traces are sent to the configured LangSmith endpoint. Normal operation remains available with observability disabled or credentials absent.
+
+When assembling the Phase 9 service, inject the settings-backed observer:
+
+```python
+from app.core.config import get_settings
+from app.observability import RAGObservability
+
+observer = RAGObservability.from_settings(get_settings())
+rag_service = Phase9RAGService(..., observability=observer)
+```
+
 ## Phase 9: Query Rewriting and Retrieval Relevance
 
 Phase 9 adds a bounded query-improvement and retrieval-sufficiency layer around Phase 6 and Phase 8:
@@ -226,6 +250,11 @@ Configuration is loaded from `.env` through Pydantic Settings. The available var
 - `EMBEDDING_MAX_RETRIES`
 - `RETRIEVAL_TOP_K`
 - `RETRIEVAL_SIMILARITY_THRESHOLD`
+- `OBSERVABILITY_ENABLED`
+- `LANGSMITH_TRACING`
+- `LANGSMITH_API_KEY`
+- `LANGSMITH_ENDPOINT`
+- `LANGSMITH_PROJECT`
 
 `.env` is ignored by Git and must never contain committed credentials.
 

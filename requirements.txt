@@ -14,3 +14,4 @@ pytest-asyncio==1.2.0
 python-dotenv==1.2.3
 sqlalchemy==2.0.44
 uvicorn[standard]==0.53.0
+langsmith==0.14.1

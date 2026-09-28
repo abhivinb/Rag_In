@@ -29,6 +29,11 @@ def test_settings_load_from_env_file(monkeypatch, tmp_path) -> None:
         "EVAL_CONTEXT_RELEVANCY_THRESHOLD",
         "EVAL_CONTEXT_PRECISION_THRESHOLD",
         "EVAL_CONTEXT_RECALL_THRESHOLD",
+        "OBSERVABILITY_ENABLED",
+        "LANGSMITH_TRACING",
+        "LANGSMITH_API_KEY",
+        "LANGSMITH_ENDPOINT",
+        "LANGSMITH_PROJECT",
     ):
         monkeypatch.delenv(variable, raising=False)
 
