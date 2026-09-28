@@ -217,6 +217,12 @@ Client -> FastAPI API -> Services -> PostgreSQL + pgvector
 
 This diagram is a placeholder for the later RAG architecture.
 
+## Phase 12: Application Security Hardening
+
+Phase 12 hardens the FastAPI boundary without changing the earlier RAG contracts. Responses include security headers and a correlation ID. Deployments can restrict host names and browser origins through `TRUSTED_HOSTS` and `CORS_ALLOWED_ORIGINS`; both default to permissive local-development values. Protected routes can opt into constant-time `X-API-Key` validation with `API_KEY`. Query models reject empty, oversized, and unsupported-control-character input before it reaches prompts or logs.
+
+For production, set an explicit `TRUSTED_HOSTS` list, configure only the required CORS origins, use HTTPS, and provide `API_KEY` for routes that require authentication. The API key is optional by design so existing local health checks and service composition remain compatible.
+
 ## Local Setup
 
 Python 3.12 is required.
