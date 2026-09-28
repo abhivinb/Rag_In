@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class RAGRequest(BaseModel):
@@ -10,7 +10,16 @@ class RAGRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    query: str
+    query: str = Field(min_length=1, max_length=4_000)
+
+    @field_validator("query")
+    @classmethod
+    def normalize_query(cls, value: str) -> str:
+        """Reject invisible control characters before they reach prompts/logs."""
+        normalized = value.strip()
+        if any(ord(character) < 32 and character not in "\n\t" for character in normalized):
+            raise ValueError("query contains unsupported control characters")
+        return normalized
 
 
 class SourceReference(BaseModel):

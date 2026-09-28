@@ -61,6 +61,10 @@ class Settings(BaseSettings):
     langsmith_api_key: SecretStr | None = None
     langsmith_endpoint: str | None = None
     langsmith_project: str | None = None
+    api_key: SecretStr | None = None
+    security_headers_enabled: bool = True
+    trusted_hosts: list[str] = Field(default_factory=lambda: ["*"])
+    cors_allowed_origins: list[str] = Field(default_factory=list)
 
     def model_post_init(self, __context: object) -> None:
         validate_embedding_configuration(self.embedding_model, self.embedding_dimension)
