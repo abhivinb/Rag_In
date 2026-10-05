@@ -1,21 +1,23 @@
-"""Pydantic contracts for stateless RAG requests and responses."""
-
-from typing import Any
+"""HTTP contracts for conversation-aware chat requests."""
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.conversation.models import ConversationMessage
+from app.rag.models import SourceReference
 
-class RAGRequest(BaseModel):
-    """One user question for the RAG pipeline."""
+
+class ChatRequest(BaseModel):
+    """One chat turn plus the client-side conversation history."""
 
     model_config = ConfigDict(extra="forbid")
 
     query: str = Field(min_length=1, max_length=4_000)
+    conversation_id: str | None = Field(default=None, min_length=1, max_length=128)
+    messages: list[ConversationMessage] = Field(default_factory=list, max_length=20)
 
     @field_validator("query")
     @classmethod
     def normalize_query(cls, value: str) -> str:
-        """Reject invisible control characters before they reach prompts/logs."""
         normalized = value.strip()
         if not normalized:
             raise ValueError("query must not be empty")
@@ -24,23 +26,12 @@ class RAGRequest(BaseModel):
         return normalized
 
 
-class SourceReference(BaseModel):
-    """A source derived directly from a retrieved chunk."""
+class ChatResponse(BaseModel):
+    """One assistant turn and the conversation identifier."""
 
     model_config = ConfigDict(extra="forbid")
 
-    chunk_id: str
-    document_id: str
-    metadata: dict[str, Any]
-    chunk_index: int = Field(ge=0)
-    retrieval_score: float = Field(ge=0.0, le=1.0)
-
-
-class RAGResponse(BaseModel):
-    """Grounded answer and deterministic source references."""
-
-    model_config = ConfigDict(extra="forbid")
-
+    conversation_id: str
     answer: str = Field(min_length=1)
     sources: list[SourceReference]
-    retrieved_context: list[str] = Field(default_factory=list)
+    messages: list[ConversationMessage]
