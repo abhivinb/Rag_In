@@ -141,7 +141,7 @@ async def test_migrated_schema_and_transaction_rollback() -> None:
                     "SELECT to_regclass('public.document_chunks') IS NOT NULL"
                 )
             )
-            assert version == "0002_add_chunk_content_fts_index"
+            assert version == "0003_add_conversation_memory"
             assert table_exists is True
             await session.rollback()
 

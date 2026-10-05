@@ -217,6 +217,33 @@ Client -> FastAPI API -> Services -> PostgreSQL + pgvector
 
 This diagram is a placeholder for the later RAG architecture.
 
+## Phase 13: Production Docker Hardening
+
+The application image uses a pinned Python `3.11.9-slim-bookworm` multi-stage build. Dependencies are installed from the pinned `requirements.txt` in a builder virtual environment and only the resulting virtual environment and runtime source are copied into the final image. The runtime runs as UID/GID `10001`, does not use reload mode, disables bytecode writes, and exposes only the API port.
+
+The image healthcheck calls the existing `/health` endpoint using Python, so the runtime image does not need `curl`. Compose also checks the API after PostgreSQL is healthy, runs the API filesystem read-only with a restricted temporary filesystem, drops Linux capabilities, and enables `no-new-privileges`. Published API and PostgreSQL ports bind to `127.0.0.1` for local development; containers communicate over the Compose network using the `postgres` service hostname.
+
+The Docker build context excludes local environments, `.env` files, tests, caches, documentation, data, and source-control metadata. Secrets remain runtime configuration only: set them in a local ignored `.env` file or the deployment environment. They are not copied into the image or embedded in the Dockerfile. This Compose setup is for local development and production-image validation; AWS deployment is intentionally deferred.
+
+## Local RAG UI
+
+The FastAPI application exposes `POST /documents` for PDF, DOCX, and TXT indexing, and `POST /ask` for questions through the real Phase 9 pipeline against the PostgreSQL knowledge base. Start the API first:
+
+```powershell
+python -m uvicorn main:app --host 127.0.0.1 --port 8000
+```
+
+Install the optional local UI dependencies and start Streamlit in a second terminal:
+
+```powershell
+pip install -r requirements-ui.txt
+streamlit run streamlit_app.py
+```
+
+Open <http://localhost:8501>, upload a document with `Upload and index`, then enter a question and click `Ask`. Both operations need a configured `OPENAI_API_KEY` and a running PostgreSQL/pgvector database. The UI reads the backend URL from `RAG_API_URL` and the optional API key from `.env`; these are intentionally not exposed as UI controls. The UI sends files and questions to the API; extraction, chunking, embeddings, retrieval, query rewriting, relevance checking, and answer generation remain server-side.
+
+The chat UI keeps a `conversation_id` and message history in Streamlit session state and sends them to `POST /chat`. Optional PostgreSQL conversation storage is controlled by `CONVERSATION_MEMORY_ENABLED=false`. `CONVERSATION_REWRITE_ENABLED=false` remains intentionally disabled for now, so history is preserved and displayed but does not yet rewrite retrieval queries. Apply migration `0003_add_conversation_memory` before enabling database-backed memory.
+
 ## Phase 12: Application Security Hardening
 
 Phase 12 hardens the FastAPI boundary without changing the earlier RAG contracts. Responses include security headers and a correlation ID. Deployments can restrict host names and browser origins through `TRUSTED_HOSTS` and `CORS_ALLOWED_ORIGINS`; both default to permissive local-development values. Protected routes can opt into constant-time `X-API-Key` validation with `API_KEY`. Query models reject empty, oversized, and unsupported-control-character input before it reaches prompts or logs.

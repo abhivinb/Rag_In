@@ -75,3 +75,41 @@ class ChunkRecord(Base):
         nullable=False,
     )
     document: Mapped[DocumentRecord] = relationship(back_populates="chunks")
+
+
+class ConversationRecord(Base):
+    """Optional persisted conversation container."""
+
+    __tablename__ = "conversations"
+
+    conversation_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+        nullable=False,
+    )
+    messages: Mapped[list["ConversationMessageRecord"]] = relationship(
+        back_populates="conversation", cascade="all, delete-orphan"
+    )
+
+
+class ConversationMessageRecord(Base):
+    """One persisted user or assistant turn."""
+
+    __tablename__ = "conversation_messages"
+    __table_args__ = (Index("ix_conversation_messages_conversation_id", "conversation_id"),)
+
+    message_id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    conversation_id: Mapped[str] = mapped_column(
+        ForeignKey("conversations.conversation_id", ondelete="CASCADE"), nullable=False
+    )
+    role: Mapped[str] = mapped_column(String(16), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), nullable=False
+    )
+    conversation: Mapped[ConversationRecord] = relationship(back_populates="messages")

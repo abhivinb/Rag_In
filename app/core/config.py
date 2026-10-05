@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     security_headers_enabled: bool = True
     trusted_hosts: list[str] = Field(default_factory=lambda: ["*"])
     cors_allowed_origins: list[str] = Field(default_factory=list)
+    conversation_memory_enabled: bool = False
+    conversation_rewrite_enabled: bool = False
+    conversation_max_messages: int = Field(default=20, gt=0, le=100)
 
     def model_post_init(self, __context: object) -> None:
         validate_embedding_configuration(self.embedding_model, self.embedding_dimension)
