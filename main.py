@@ -1,5 +1,6 @@
 """FastAPI application entry point."""
 
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,6 +11,8 @@ from app.core.logging import configure_logging
 from app.database.session import create_engine, create_session_factory
 from app.security.middleware import add_security_middleware
 
+logger = logging.getLogger(__name__)
+
 
 def create_app() -> FastAPI:
     """Create and configure the FastAPI application."""
@@ -18,11 +21,14 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        # Uvicorn may configure logging after module import; restore the app handlers at startup.
+        configure_logging(settings)
         engine = create_engine(settings)
         application.state.engine = engine
         application.state.session_factory = create_session_factory(engine)
         application.state.rag_service = None
         application.state.document_indexing_service = None
+        logger.info("Application startup complete")
         try:
             yield
         finally:

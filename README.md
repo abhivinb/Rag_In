@@ -143,13 +143,20 @@ Evaluation Dataset -> RAG Pipeline -> Actual Answer + Retrieved Context
 				   -> DeepEval Metrics -> Evaluation Report
 ```
 
-The dataset format contains `id`, `question`, `expected_answer`, and `expected_contexts`. Runtime retrieved contexts remain separate from expected ground-truth contexts. The supported DeepEval metrics are Faithfulness, Answer Relevancy, Contextual Relevancy, Contextual Precision, and Contextual Recall. Thresholds and the evaluation judge model are configured with `EVAL_*` settings.
+The dataset format contains `id`, `question`, `expected_answer`, and `expected_contexts`. Runtime retrieved contexts remain separate from expected ground-truth contexts. The DeepEval run includes Faithfulness, Answer Relevancy, Contextual Relevancy, Contextual Precision, Contextual Recall, Bias, Toxicity, and PII Leakage. Thresholds and the evaluation judge model are configured with `EVAL_*` settings. A separate Groq judge can be configured through the OpenAI-compatible API:
 
-Normal tests use fake RAG and metric components and make no network calls. An optional real evaluation run is available only after wiring a configured RAG application into `evaluation/run_evaluation.py`:
+```dotenv
+EVAL_LLM_PROVIDER=groq
+EVAL_LLM_API_KEY=your-groq-secret
+EVAL_LLM_BASE_URL=https://api.groq.com/openai/v1
+EVAL_LLM_MODEL=llama-3.3-70b-versatile
+```
+
+Normal tests use fake RAG and metric components and make no network calls. The optional real run uses DeepEval's native `evaluate` API from `evaluation/run_deepeval.py`:
 
 ```powershell
 $env:RUN_REAL_EVAL = "1"
-python evaluation/run_evaluation.py
+python -m evaluation.run_deepeval
 ```
 
 Evaluation scores are model- and dataset-dependent measurements, not absolute truth. Reports can be written to `evaluation/results/latest.json` by callers and that directory is ignored by Git. Evaluation is not part of the production request path, does not gate startup or CI, and does not implement reranking, agents, LangGraph, or monitoring.
