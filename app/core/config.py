@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     app_name: str = Field(default="Enterprise RAG Knowledge Assistant")
     app_env: str = Field(default="development")
     log_level: str = Field(default="INFO")
+    log_file: str = Field(default="logs/app.log")
+    log_max_bytes: int = Field(default=10_485_760, gt=0)
+    log_backup_count: int = Field(default=5, ge=0)
 
     postgres_host: str = Field(default="localhost")
     postgres_port: int = Field(default=5432)
@@ -50,12 +53,16 @@ class Settings(BaseSettings):
     query_rewrite_enabled: bool = True
     query_rewrite_model: str = Field(default="gpt-4o-mini")
     rag_relevance_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
+    eval_llm_provider: str = Field(default="openai")
     eval_llm_model: str = Field(default="gpt-4o-mini")
+    eval_llm_api_key: SecretStr | None = None
+    eval_llm_base_url: str | None = None
     eval_faithfulness_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     eval_answer_relevancy_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     eval_context_relevancy_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     eval_context_precision_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     eval_context_recall_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
+    eval_safety_threshold: float = Field(default=0.70, ge=0.0, le=1.0)
     observability_enabled: bool = False
     langsmith_tracing: bool = False
     langsmith_api_key: SecretStr | None = None

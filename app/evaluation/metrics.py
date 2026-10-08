@@ -47,7 +47,7 @@ class DeepEvalMetricAdapter:
             raise EvaluationMetricError(f"Metric {self.name} failed.") from error
 
 
-def build_deepeval_metrics(thresholds: dict[str, float], model: str) -> list[DeepEvalMetricAdapter]:
+def build_deepeval_metrics(thresholds: dict[str, float], model: object) -> list[DeepEvalMetricAdapter]:
     """Build the five supported DeepEval RAG metrics lazily."""
     try:
         from deepeval.metrics import (

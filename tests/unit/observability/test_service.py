@@ -109,7 +109,12 @@ def test_missing_langsmith_credentials_disable_tracing_without_startup_failure(
     monkeypatch,
 ) -> None:
     monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
-    settings = Settings(postgres_password="test-password", observability_enabled=True, langsmith_tracing=True)
+    settings = Settings(
+        _env_file=None,
+        postgres_password="test-password",
+        observability_enabled=True,
+        langsmith_tracing=True,
+    )
 
     observability = RAGObservability.from_settings(settings)
 
@@ -118,8 +123,11 @@ def test_missing_langsmith_credentials_disable_tracing_without_startup_failure(
 
 def test_observability_defaults_disabled_and_secret_is_masked() -> None:
     settings = Settings(
+        _env_file=None,
         postgres_password="test-password",
         langsmith_api_key="ls_secret_value",
+        observability_enabled=False,
+        langsmith_tracing=False,
     )
 
     assert settings.observability_enabled is False

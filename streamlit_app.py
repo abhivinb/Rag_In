@@ -86,7 +86,20 @@ if query:
 if st.session_state.last_sources:
     with st.expander("Latest answer sources"):
         for source in st.session_state.last_sources:
-            st.write(
-                f"{source['document_id']} / {source['chunk_id']} "
-                f"(score: {source['retrieval_score']:.3f})"
+            metadata = source.get("metadata") or {}
+            file_name = metadata.get("file_name") or "Uploaded document"
+            pages = metadata.get("page_numbers") or []
+            if not pages and metadata.get("page_number"):
+                pages = [metadata["page_number"]]
+            if len(pages) == 1:
+                location = f"page {pages[0]}"
+            elif pages:
+                location = "pages " + ", ".join(str(page) for page in pages)
+            else:
+                location = f"chunk {source.get('chunk_index', 0) + 1}"
+            relevance = source.get("retrieval_score", 0.0) * 100
+            st.markdown(
+                f"**{file_name}**  "
+                f"\nRelevant passage: {location} "
+                f"(match strength: {relevance:.0f}%)"
             )

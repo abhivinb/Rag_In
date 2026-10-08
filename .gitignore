@@ -10,6 +10,10 @@ venv/
 .env
 *.log
 
+# Runtime application logs
+logs/*
+!logs/.gitkeep
+
 # Local data generated during development
 data/raw/*
 data/processed/*
