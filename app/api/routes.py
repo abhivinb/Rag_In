@@ -1,8 +1,9 @@
 """Application HTTP routes."""
 
 import logging
+import secrets
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import uuid4
 
@@ -14,11 +15,14 @@ from app.api.dependencies import (
 )
 from app.api.chat_models import ChatRequest, ChatResponse
 from app.api.models import DocumentUploadResponse
+from app.conversation.access import conversation_token, valid_conversation_token
 from app.conversation.models import ConversationMessage
 from app.conversation.repository import ConversationRepository
 from app.core.config import get_settings
+from app.database.session import check_database_connection
 from app.ingestion.errors import IngestionError
 from app.ingestion.indexing import DocumentIndexingService
+from app.ingestion.validators import MAX_FILE_SIZE_BYTES
 from app.rag.models import RAGRequest, RAGResponse
 from app.rag.phase9 import Phase9RAGService
 from app.security.dependencies import require_api_key
@@ -28,8 +32,17 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/health", tags=["system"])
-def health_check() -> dict[str, str]:
-    """Return the service health status."""
+async def health_check(request: Request) -> dict[str, str]:
+    """Return service health after checking the live database connection."""
+    engine = getattr(request.app.state, "engine", None)
+    if engine is not None:
+        try:
+            await check_database_connection(engine)
+        except Exception as error:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Database is unavailable.",
+            ) from error
     return {"status": "healthy"}
 
 
@@ -40,6 +53,7 @@ def health_check() -> dict[str, str]:
     dependencies=[Depends(require_api_key)],
 )
 async def upload_document(
+    request: Request,
     file: UploadFile = File(...),
     session: AsyncSession = Depends(get_database_session),
     indexing_service: DocumentIndexingService = Depends(get_document_indexing_service),
@@ -47,6 +61,19 @@ async def upload_document(
     """Validate, embed, and persist one PDF, DOCX, or TXT upload."""
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="A filename is required.")
+    content_length = request.headers.get("content-length")
+    if content_length is not None:
+        try:
+            if int(content_length) > MAX_FILE_SIZE_BYTES + 1_048_576:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="The uploaded request exceeds the 50 MB limit.",
+                )
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid Content-Length header.",
+            ) from None
     try:
         result = await indexing_service.index(session, file.filename, file.file)
         return DocumentUploadResponse(
@@ -109,6 +136,19 @@ async def chat(
     """Run one chat turn while preserving client and optional DB history."""
     settings = get_settings()
     conversation_id = request.conversation_id or str(uuid4())
+    if settings.conversation_memory_enabled and request.conversation_id:
+        if not valid_conversation_token(
+            conversation_id, request.conversation_token, settings
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="A valid conversation token is required.",
+            )
+    response_conversation_token = (
+        conversation_token(conversation_id, settings)
+        if settings.conversation_memory_enabled
+        else secrets.token_urlsafe(32)
+    )
     history = list(request.messages)
     if settings.conversation_memory_enabled and request.conversation_id:
         stored = await conversations.get_messages(
@@ -135,6 +175,7 @@ async def chat(
             )
         return ChatResponse(
             conversation_id=conversation_id,
+            conversation_token=response_conversation_token,
             answer=response.answer,
             sources=response.sources,
             messages=updated_history,

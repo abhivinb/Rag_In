@@ -1,7 +1,6 @@
 """Application service for indexing uploaded documents."""
 
 import hashlib
-import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,7 +10,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.persistence import EmbeddingPersistenceService
 from app.ingestion.chunking.service import ChunkingService
+from app.ingestion.errors import DocumentValidationError
 from app.ingestion.service import IngestionService
+from app.ingestion.validators import MAX_FILE_SIZE_BYTES
 
 
 @dataclass(frozen=True)
@@ -48,7 +49,12 @@ class DocumentIndexingService:
         temporary_path: Path | None = None
         try:
             with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temporary:
-                shutil.copyfileobj(content, temporary)
+                total_bytes = 0
+                while chunk := content.read(1024 * 1024):
+                    total_bytes += len(chunk)
+                    if total_bytes > MAX_FILE_SIZE_BYTES:
+                        raise DocumentValidationError("The source file exceeds the 50 MB limit.")
+                    temporary.write(chunk)
                 temporary_path = Path(temporary.name)
             document = self.ingestion.ingest(temporary_path)
         finally:

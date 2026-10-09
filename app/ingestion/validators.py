@@ -12,6 +12,8 @@ CONTENT_TYPES = {
     "txt": "text/plain",
 }
 MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024
+MAX_DOCX_UNCOMPRESSED_BYTES = 100 * 1024 * 1024
+MAX_DOCX_COMPRESSION_RATIO = 100
 
 
 def detect_file_type(file_path: Path) -> str:
@@ -54,5 +56,12 @@ def validate_file(file_path: str | Path) -> tuple[Path, str]:
 def _is_docx_archive(path: Path) -> bool:
     """Check the minimal OOXML markers without extracting the archive."""
     with zipfile.ZipFile(path) as archive:
-        names = set(archive.namelist())
+        entries = archive.infolist()
+        uncompressed_size = sum(entry.file_size for entry in entries)
+        if uncompressed_size > MAX_DOCX_UNCOMPRESSED_BYTES:
+            raise DocumentValidationError("The DOCX archive expands beyond the allowed size.")
+        compressed_size = max(sum(entry.compress_size for entry in entries), 1)
+        if uncompressed_size / compressed_size > MAX_DOCX_COMPRESSION_RATIO:
+            raise DocumentValidationError("The DOCX archive compression ratio is unsafe.")
+        names = {entry.filename for entry in entries}
         return "[Content_Types].xml" in names and "word/document.xml" in names

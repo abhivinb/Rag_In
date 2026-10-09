@@ -5,7 +5,8 @@ import "./styles.css";
 const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 
 function App() {
-  const [conversationId, setConversationId] = useState(() => crypto.randomUUID());
+  const [conversationId, setConversationId] = useState(null);
+  const [conversationToken, setConversationToken] = useState(null);
   const [messages, setMessages] = useState([]);
   const [sources, setSources] = useState([]);
   const [query, setQuery] = useState("");
@@ -64,11 +65,17 @@ function App() {
       const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...headers },
-        body: JSON.stringify({ query: trimmed, conversation_id: conversationId, messages }),
+        body: JSON.stringify({
+          query: trimmed,
+          ...(conversationId ? { conversation_id: conversationId } : {}),
+          ...(conversationToken ? { conversation_token: conversationToken } : {}),
+          messages,
+        }),
       });
       if (!response.ok) throw new Error(await readError(response));
       const payload = await response.json();
       setConversationId(payload.conversation_id);
+      setConversationToken(payload.conversation_token);
       setMessages(payload.messages || [...nextMessages, { role: "assistant", content: payload.answer }]);
       setSources(payload.sources || []);
     } catch (error) {
@@ -105,7 +112,7 @@ function App() {
               <p className="eyebrow">ASSISTANT</p>
               <h2>Ask your knowledge base</h2>
             </div>
-            <button className="ghost-button" onClick={() => { setMessages([]); setSources([]); setConversationId(crypto.randomUUID()); setNotice(null); }}>
+            <button className="ghost-button" onClick={() => { setMessages([]); setSources([]); setConversationId(null); setConversationToken(null); setNotice(null); }}>
               New chat
             </button>
           </div>

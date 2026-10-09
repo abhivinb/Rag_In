@@ -13,6 +13,7 @@ class ChatRequest(BaseModel):
 
     query: str = Field(min_length=1, max_length=4_000)
     conversation_id: str | None = Field(default=None, min_length=1, max_length=128)
+    conversation_token: str | None = Field(default=None, min_length=32, max_length=128)
     messages: list[ConversationMessage] = Field(default_factory=list, max_length=20)
 
     @field_validator("query")
@@ -32,6 +33,7 @@ class ChatResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     conversation_id: str
+    conversation_token: str
     answer: str = Field(min_length=1)
     sources: list[SourceReference]
     messages: list[ConversationMessage]

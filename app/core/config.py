@@ -75,11 +75,24 @@ class Settings(BaseSettings):
     conversation_memory_enabled: bool = False
     conversation_rewrite_enabled: bool = False
     conversation_max_messages: int = Field(default=20, gt=0, le=100)
+    conversation_signing_secret: SecretStr | None = None
 
     def model_post_init(self, __context: object) -> None:
         validate_embedding_configuration(self.embedding_model, self.embedding_dimension)
         if abs((self.hybrid_vector_weight + self.hybrid_keyword_weight) - 1.0) > 1e-9:
             raise ValueError("Hybrid retrieval weights must sum to 1.0.")
+        if self.app_env.lower() == "production":
+            if self.api_key is None or not self.api_key.get_secret_value():
+                raise ValueError("API_KEY is required in production.")
+            if self.trusted_hosts == ["*"]:
+                raise ValueError("TRUSTED_HOSTS must be restricted in production.")
+        if self.conversation_memory_enabled and (
+            self.conversation_signing_secret is None
+            or not self.conversation_signing_secret.get_secret_value()
+        ):
+            raise ValueError(
+                "CONVERSATION_SIGNING_SECRET is required when conversation memory is enabled."
+            )
 
     model_config = SettingsConfigDict(
         env_file=".env",
