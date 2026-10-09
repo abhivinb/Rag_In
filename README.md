@@ -234,20 +234,29 @@ The Docker build context excludes local environments, `.env` files, tests, cache
 
 ## Local RAG UI
 
-The FastAPI application exposes `POST /documents` for PDF, DOCX, and TXT indexing, and `POST /ask` for questions through the real Phase 9 pipeline against the PostgreSQL knowledge base. Start the API first:
+The FastAPI application exposes `POST /documents` for PDF, DOCX, and TXT indexing, `POST /ask` for direct questions, and `POST /chat` for the conversation-aware UI. Start the API first:
 
 ```powershell
 python -m uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-Install the optional local UI dependencies and start Streamlit in a second terminal:
+Start the React/Vite frontend in a second terminal:
 
 ```powershell
-pip install -r requirements-ui.txt
-streamlit run streamlit_app.py
+cd frontend
+npm install
+npm run dev
 ```
 
-Open <http://localhost:8501>, upload a document with `Upload and index`, then enter a question and click `Ask`. Both operations need a configured `OPENAI_API_KEY` and a running PostgreSQL/pgvector database. The UI reads the backend URL from `RAG_API_URL` and the optional API key from `.env`; these are intentionally not exposed as UI controls. The UI sends files and questions to the API; extraction, chunking, embeddings, retrieval, query rewriting, relevance checking, and answer generation remain server-side.
+Open <http://localhost:5173>, upload a document with `Upload and index`, then enter a question and click `Ask`. Both operations need a configured `OPENAI_API_KEY` and a running PostgreSQL/pgvector database. Set `VITE_API_URL` in the frontend environment if the API is not running at `http://127.0.0.1:8000`. If API authentication is enabled, enter the key in the UI for the current browser session or provide it through `VITE_API_KEY` for local development. Do not commit production keys into Vite variables because they are bundled into browser JavaScript.
+
+For browser requests during local development, set the backend CORS allowlist in `.env`:
+
+```dotenv
+CORS_ALLOWED_ORIGINS=["http://localhost:5173","http://127.0.0.1:5173"]
+```
+
+The frontend sends files to `/documents` and chat turns to `/chat`; extraction, chunking, embeddings, retrieval, query rewriting, relevance checking, and answer generation remain server-side. The legacy `streamlit_app.py` is no longer required for the React UI.
 
 The chat UI keeps a `conversation_id` and message history in Streamlit session state and sends them to `POST /chat`. Optional PostgreSQL conversation storage is controlled by `CONVERSATION_MEMORY_ENABLED=false`. `CONVERSATION_REWRITE_ENABLED=false` remains intentionally disabled for now, so history is preserved and displayed but does not yet rewrite retrieval queries. Apply migration `0003_add_conversation_memory` before enabling database-backed memory.
 
